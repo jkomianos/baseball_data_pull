@@ -25,7 +25,6 @@ import pandas_profiling
 #
 #   CONFIGURABLES
 war_ref_site = 'https://www.baseball-reference.com/data/'
-war_zip_dir = r'C:\Users\jkomi\Code\baseball_data_pull\war_data\zip_data'
 war_extract_dir = r'C:\Users\jkomi\Code\baseball_data_pull\war_data\extracted_data'
 sample_file_bat = r'C:\Users\jkomi\Code\baseball_data_pull\war_data\war_daily_bat_sample.txt'
 sample_file_pitch = r'C:\Users\jkomi\Code\baseball_data_pull\war_data\war_daily_pitch_sample.txt'
@@ -33,30 +32,36 @@ sample_file_pitch = r'C:\Users\jkomi\Code\baseball_data_pull\war_data\war_daily_
 #########
 #   For now, requests-based versions of web pull
 #
-def download_war_archives(limit_num_zips = 10):
-    #write a file from a particular url, using the war_zip_dir as save location
-    def url_response(url, pool_manager):
-        #req = requests.get(url, stream = True)
-        req = pool_manager.urlopen('GET', url)
-        zip_file = req.read()
-        
-        write_path = os.path.join(war_zip_dir, url.replace(war_ref_site, '')) 
-        with open(write_path, 'wb') as f:
-            f.write(zip_file)
-        #z = zipfile.ZipFile(io.StringIO(str(req.content)))
-        #z.extractall(write_path)
+def download_war_archives(limit_num_zips = 5):
+    #write a file from a particular url, using the war_extract_dir as save location
+    def url_zip_download(url, zip_file_name):
+        req = requests.get(url)
+        zip_file = zipfile.ZipFile(io.BytesIO(req.content))
+
+        #make the dir if it doesnt exist already
+        save_dir = os.path.join(war_extract_dir, zip_file_name.replace('.zip',''))
+        if (not os.path.isdir(save_dir)):
+            os.mkdir(save_dir)
+        zip_file.extractall(save_dir)  
+
+        #req = pool_manager.urlopen('GET', url)
+        #zip_file = req.read()
+        #print(zip_file)
+        #write_path = os.path.join(war_zip_dir, url.replace(war_ref_site, '')) 
+        #with open(write_path, 'wb') as f:
+        #    f.write(zip_file)
 
     #get list of urls
     page = requests.get(war_ref_site)
     webpage = html.fromstring(page.content)
     file_list = webpage.xpath('//a/@href')
-    pool_manager = urllib3.PoolManager()
+    pool_manager = None #urllib3.PoolManager()
 
     index = 0 
     for zip_file in file_list:
         if(re.match('war_archive-20*', zip_file)):
-            print("Downloading", zip_file, "to", war_zip_dir)
-            url_response(war_ref_site + zip_file, pool_manager)
+            print("Extracting", zip_file, "to", war_extract_dir)
+            url_zip_download(war_ref_site + zip_file, zip_file)
             time.sleep(2)
             if index > limit_num_zips:
                 print ("Maximum download limit reached. Returning...")
@@ -65,10 +70,9 @@ def download_war_archives(limit_num_zips = 10):
             print("Skipped over", zip_file)
             continue
         
-
+### Would be nice...
 def refresh_war_archives():
     raise NotImplementedError
-
 
 ########
 # Taking in a file name, return a pandas dataframe from raw csv
@@ -96,19 +100,18 @@ def extract_single_war_csv(file_name, ref_cols, year_only = 2019):
 #######
 #
 #
-def transform_war_pitch(stats_df, remove_all_but_recent_year):
+def transform_war_pitch(stats_df):
     raise NotImplementedError
-def transform_war_bat(stats_df, remove_all_but_recent_year):
+def transform_war_bat(stats_df):
     raise NotImplementedError
-
-
-#######
-#
-#
-def load_war_pitch():
+def load_war_pitch(stats_df):
     raise NotImplementedError
-def load_war_bat():
+def load_war_bat(stats_df):
     raise NotImplementedError
 
+def main():
+    download_war_archives()
+    unzip_war_archives()
 
-
+if __name__ == '__main__':
+    main()
