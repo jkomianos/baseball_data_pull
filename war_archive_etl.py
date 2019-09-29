@@ -69,7 +69,7 @@ def download_war_archives(limit_num_zips = 5):
         else:
             print("Skipped over", zip_file)
             continue
-        
+
 ### Would be nice...
 def refresh_war_archives():
     raise NotImplementedError
@@ -97,6 +97,32 @@ def extract_single_war_csv(file_name, ref_cols, year_only = 2019):
     else:
         return stats_df
 
+def extract_all_war_csv(file_name, ref_cols, data_dir):
+
+    all_stats_df = pd.DataFrame()
+
+    for date_dir in os.listdir(data_dir):
+        #get the date from directory
+        date_pattern = '[0-9]{4}-[0-9]{2}-[0-9]{2}'
+        year_pattern = '[0-9]{4}'
+        date_match = re.search(date_pattern, date_dir) 
+        year_match = re.search(year_pattern, date_dir)
+        try:
+            date_str = date_match.group()
+            year = int(year_match.group())
+        except:
+            continue
+
+        #get the daily df, add a date column, get only this year's data
+        stats_df = extract_single_war_csv(os.path.join(date_dir, file_name), ref_cols, year_only = year)
+        stats_df['daily_date'] = pd.to_datetime(date_str)
+
+        if(all_stats_df.shape[0] == 0):
+            all_stats_df = stats_df
+        else:
+            all_stats_df = all_stats_df.append(stats_df)
+
+        return all_stats_df
 #######
 #
 #
